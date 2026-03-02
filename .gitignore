@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Dataset
+data/alignment/raw/img_align_celeba
+data/alignment/raw/img_align_celeba.zip
+
