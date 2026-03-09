@@ -210,3 +210,6 @@ __marimo__/
 data/alignment/raw/img_align_celeba
 data/alignment/raw/img_align_celeba.zip
 
+
+models/alignment/weights/best_model.pth
+
