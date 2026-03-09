@@ -1,4 +1,3 @@
-162079
 lefteye_x lefteye_y righteye_x righteye_y nose_x nose_y leftmouth_x leftmouth_y rightmouth_x rightmouth_y
 020294.jpg 68  111  108  112   89  135   69  152  108  151
 179427.jpg 72  111  105  109  103  136   71  156  104  153
