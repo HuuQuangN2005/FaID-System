@@ -1,23 +1,26 @@
-import torch
-import torch.nn as nn
-import pandas as pd
-import numpy as np
-import random
 import os
 import sys
 import gc
-import matplotlib.pyplot as plt
-import torch.optim as optim
-from tqdm import tqdm
 
+import pandas as pd
+import numpy as np
+import random
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from sklearn.preprocessing import LabelEncoder
-from torch.amp import GradScaler, autocast
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 from src.models.models import EmbeddingModel
 from src.models.backbone import Resnet
 from src.models.metrics import ArcMarginProduct
 from src.utils.dataset import WebFaceDataset
+from src.trainning.trainer import Trainer
+
+NUM_CLASSES = 1780
 
 
 def init(seed=42, benchmark=False) -> None:
@@ -34,149 +37,6 @@ def init(seed=42, benchmark=False) -> None:
     torch.backends.cudnn.benchmark = benchmark
 
 
-scaler = GradScaler()
-
-
-def train_model(
-    model,
-    train_loader,
-    val_loader,
-    criterion,
-    optimizer,
-    num_epochs=50,
-    patience=5,
-    device="cuda",
-    save_dir="checkpoints",
-):
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
-    best_val_loss = float("inf")
-    epochs_no_improve = 0
-    model.to(device)
-
-    for epoch in range(num_epochs):
-        model.train()
-        running_train_loss = 0.0
-        train_correct = 0
-        train_total = 0
-
-        train_pbar = tqdm(
-            train_loader,
-            desc=f"Epoch {epoch+1}/{num_epochs} [Train]",
-            unit="batch",
-            leave=False,
-        )
-
-        for images, labels in train_pbar:
-            images = images.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
-
-            optimizer.zero_grad(set_to_none=True)
-
-            with autocast(device_type="cuda"):
-                logits = model(images, labels)
-                loss = criterion(logits, labels)
-
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-
-            running_train_loss += loss.item() * images.size(0)
-            _, predicted = torch.max(logits.data, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
-
-            train_pbar.set_postfix(
-                {
-                    "loss": f"{loss.item():.4f}",
-                    "acc": f"{100 * train_correct / train_total:.2f}%",
-                }
-            )
-
-        epoch_train_loss = running_train_loss / len(train_loader.dataset)
-        epoch_train_acc = 100 * train_correct / train_total
-
-        model.eval()
-        running_val_loss = 0.0
-        val_correct = 0
-        val_total = 0
-
-        val_pbar = tqdm(
-            val_loader,
-            desc=f"Epoch {epoch+1}/{num_epochs} [Val]",
-            unit="batch",
-            leave=False,
-        )
-
-        with torch.no_grad():
-            for images, labels in val_pbar:
-                images, labels = images.to(device), labels.to(device)
-                with autocast(device_type="cuda"):
-                    logits = model(images, labels)
-                    loss = criterion(logits, labels)
-
-                running_val_loss += loss.item() * images.size(0)
-                _, predicted = torch.max(logits.data, 1)
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
-
-                val_pbar.set_postfix({"loss": f"{loss.item():.4f}"})
-
-        epoch_val_loss = running_val_loss / len(val_loader.dataset)
-        epoch_val_acc = 100 * val_correct / val_total
-
-        history["train_loss"].append(epoch_train_loss)
-        history["val_loss"].append(epoch_val_loss)
-        history["train_acc"].append(epoch_train_acc)
-        history["val_acc"].append(epoch_val_acc)
-
-        print(
-            f"Epoch [{epoch+1}/{num_epochs}] "
-            f"| Train Loss: {epoch_train_loss:.4f}, Acc: {epoch_train_acc:.2f}% "
-            f"| Val Loss: {epoch_val_loss:.4f}, Acc: {epoch_val_acc:.2f}%"
-        )
-
-        print(f"VRAM Reserved: {torch.cuda.memory_reserved() / 1024**2:.2f} MB")
-
-        if epoch_val_loss < best_val_loss:
-            best_val_loss = epoch_val_loss
-            torch.save(
-                model.state_dict(), os.path.join(save_dir, "best_arcface_model.pth")
-            )
-            epochs_no_improve = 0
-            print("--> Model improved & saved!")
-        else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= patience:
-                print(f"Early Stopping triggered after {patience} epochs.")
-                break
-
-        gc.collect()
-        torch.cuda.empty_cache()
-
-    return history
-
-
-def save(history, save_dir):
-    epochs = range(1, len(history["train_loss"]) + 1)
-
-    plt.figure(figsize=(10, 6))
-    plt.plot(epochs, history["train_loss"], "b-", label="Train Loss")
-    plt.plot(epochs, history["val_loss"], "r--", label="Val Loss")
-
-    plt.title("ArcFace Training & Validation Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss (CrossEntropy)")
-    plt.legend()
-    plt.grid(True)
-
-    plot_path = os.path.join(save_dir, "loss_chart.png")
-    plt.savefig(plot_path)
-    plt.show()
-
-
 if __name__ == "__main__":
 
     gc.collect()
@@ -186,7 +46,7 @@ if __name__ == "__main__":
     if root_path not in sys.path:
         sys.path.append(root_path)
 
-    init()
+    init(benchmark=True)
 
     DATA_DIR = os.path.join(root_path, "data", "processed", "webface_112x112")
     METADATA_DIR = os.path.join(DATA_DIR, "metadata.xlsx")
@@ -207,8 +67,14 @@ if __name__ == "__main__":
     train_transform = transforms.Compose(
         [
             transforms.RandomHorizontalFlip(p=0.5),
+            #transforms.RandomRotation(degrees=15),
+            transforms.RandomResizedCrop(size=112, scale=(0.8, 1.0), ratio=(0.9, 1.1)),
             transforms.RandomApply(
-                [transforms.ColorJitter(brightness=0.2, contrast=0.2)], p=0.3
+                [transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2)],
+                p=0.2,
+            ),
+            transforms.RandomApply(
+                [transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0))], p=0.2
             ),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
@@ -225,23 +91,23 @@ if __name__ == "__main__":
     train_dataset = WebFaceDataset(train_df, DATA_DIR, transform=train_transform)
     train_loader = DataLoader(
         train_dataset,
-        batch_size=52,
+        batch_size=256,
         shuffle=True,
         num_workers=8,
         pin_memory=True,
         persistent_workers=True,
-        prefetch_factor=8,
+        prefetch_factor=2,
     )
 
     val_dataset = WebFaceDataset(val_df, DATA_DIR, transform=test_transform)
     val_loader = DataLoader(
         val_dataset,
-        batch_size=52,
+        batch_size=256,
         shuffle=False,
         num_workers=8,
         pin_memory=True,
         persistent_workers=True,
-        prefetch_factor=8,
+        prefetch_factor=2,
     )
 
     # test_dataset = WebFaceDataset(test_df, DATA_DIR, transform=test_transform)
@@ -249,36 +115,41 @@ if __name__ == "__main__":
     #     test_dataset, batch_size=128, shuffle=False, num_workers=0, pin_memory=True
     # )
 
-    num_classes = 1780
-
     model = EmbeddingModel(
-        backbone=Resnet("resnet50", image_size=112, out_channels=512),
-        metric=ArcMarginProduct(512, num_classes, s=64, m=0.3),
+        backbone=Resnet(
+            "resnet18", image_size=112, out_channels=512, weights="IMAGENET1K_V1"
+        ),
+        metric=ArcMarginProduct(512, NUM_CLASSES, s=64, m=0.25),
     )
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
     optimizer = optim.AdamW(
         [
             {"params": model.backbone.parameters(), "lr": 1e-4},
             {
                 "params": model.metric.parameters(),
-                "lr": 1e-4,
+                "lr": 1e-3,
             },
         ],
-        weight_decay=1e-4,
+        weight_decay=5e-2,
     )
 
-    history = train_model(
+    scheduler = ReduceLROnPlateau(
+        optimizer=optimizer, mode="min", patience=5, threshold=1e-2
+    )
+
+    trainer = Trainer(
         model=model,
+        optimizer=optimizer,
+        criterion=criterion,
+        checkpoints_dir="checkpoints/recognition",
+        logs_dir="logs/recognition",
+    )
+
+    history = trainer.fit(
         train_loader=train_loader,
         val_loader=val_loader,
-        criterion=criterion,
-        optimizer=optimizer,
-        num_epochs=100,
-        device="cuda" if torch.cuda.is_available() else "cpu",
-        save_dir=os.path.join(CHECKPOINTS, "FaceEmbedding", "weights"),
-    )
-
-    save(
-        history=history, save_dir=os.path.join(CHECKPOINTS, "FaceEmbedding", "results")
+        scheduler=scheduler,
+        epochs=200,
+        patience=8,
     )

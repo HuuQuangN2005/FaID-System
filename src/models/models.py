@@ -11,9 +11,10 @@ class EmbeddingModel(nn.Module):
 
     def forward(self, x, y=None):
         embs = self.backbone(x)
+        embs = F.normalize(embs, p=2, dim=1)
 
         if y is not None:
             logits = self.metric(embs, y)
             return logits
 
-        return F.normalize(embs)
+        return embs
