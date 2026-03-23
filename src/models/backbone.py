@@ -30,7 +30,11 @@ class Resnet(nn.Module):
             raise ValueError(f"Model not supported")
 
         in_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Linear(in_features, self.out_channels)
+        self.backbone.fc = nn.Sequential(
+            nn.Dropout(p=0.4),
+            nn.Linear(in_features, out_channels, bias=False),
+            nn.BatchNorm1d(out_channels, eps=1e-05),
+        )
 
     def forward(self, x):
         return self.backbone(x)

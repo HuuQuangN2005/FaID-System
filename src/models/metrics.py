@@ -20,7 +20,7 @@ class ArcMarginProduct(nn.Module):
         self.mm = math.sin(math.pi - m) * m
 
         self.weight = Parameter(torch.FloatTensor(out_features, in_features))
-        nn.init.xavier_uniform_(self.weight)
+        nn.init.normal_(self.weight, std=0.01)
 
     def forward(self, input, label):
         cosine = F.linear(F.normalize(input), F.normalize(self.weight))
