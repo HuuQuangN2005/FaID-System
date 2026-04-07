@@ -1,6 +1,5 @@
 import os
 import random
-
 import cv2
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,8 +47,7 @@ def split_data():
     save_split("val.txt", val_data)
     save_split("test.txt", test_data)
 
-import os
-import cv2
+
 
 def convert_to_yolo(input_file, image_dir, output_dir, class_id=0):
     os.makedirs(output_dir, exist_ok=True)
@@ -85,7 +83,6 @@ def convert_to_yolo(input_file, image_dir, output_dir, class_id=0):
 
         label_path = os.path.join(output_dir, image_name.replace(".jpg", ".txt"))
 
-        # nếu ảnh chưa xử lý → xóa file cũ
         if image_name not in processed_images:
             if os.path.exists(label_path):
                 os.remove(label_path)
@@ -101,7 +98,6 @@ def convert_to_yolo(input_file, image_dir, output_dir, class_id=0):
 def visualize_and_save(image_path, label_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
-    # đọc ảnh gốc
     img = cv2.imread(image_path)
     if img is None:
         print("Không đọc được ảnh")
@@ -109,10 +105,8 @@ def visualize_and_save(image_path, label_path, output_dir):
 
     h, w = img.shape[:2]
 
-    # copy ảnh (tránh đè ảnh gốc)
     img_draw = img.copy()
 
-    # đọc label
     with open(label_path, "r") as f:
         lines = f.readlines()
 
@@ -124,7 +118,6 @@ def visualize_and_save(image_path, label_path, output_dir):
         bw = float(parts[3])
         bh = float(parts[4])
 
-        # convert YOLO -> pixel
         x_center *= w
         y_center *= h
         bw *= w
@@ -135,10 +128,8 @@ def visualize_and_save(image_path, label_path, output_dir):
         x_max = int(x_center + bw / 2)
         y_max = int(y_center + bh / 2)
 
-        # vẽ bbox
         cv2.rectangle(img_draw, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
 
-    # lưu ảnh vào thư mục res
     file_name = os.path.basename(image_path)
     save_path = os.path.join(output_dir, file_name)
 
