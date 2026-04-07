@@ -1,8 +1,7 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
-
+import torch
 class EmbeddingModel(nn.Module):
     def __init__(self, backbone, metric):
         super(EmbeddingModel, self).__init__()
@@ -36,3 +35,4 @@ class LandmarkModel(nn.Module):
         x = self.fc(x)
 
         return x.view(-1,5,2)
+
