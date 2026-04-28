@@ -1,0 +1,77 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn import Parameter
+import math
+
+
+class ConvBlock(nn.Module):
+    def __init__(
+        self,
+        in_c: int,
+        out_c: int,
+        kernel: int = 3,
+        stride: int = 1,
+        padding: int = 0,
+        bias: bool = False,
+        act: str = "leakyrelu",
+    ):
+        super(ConvBlock, self).__init__()
+        self.conv = nn.Conv2d(
+            in_channels=in_c,
+            out_channels=out_c,
+            kernel_size=kernel,
+            stride=stride,
+            padding=padding,
+            bias=bias,
+        )
+        self.bn = nn.BatchNorm2d(num_features=out_c)
+
+        act = act.lower()
+        if act == "leakyrelu":
+            self.act = nn.LeakyReLU(0.1, inplace=True)
+        elif act == "relu":
+            self.act = nn.ReLU(inplace=True)
+        elif act == "tanh":
+            self.act = nn.Tanh()
+        elif act == "gelu":
+            self.act = nn.GELU()
+        else:
+            raise ValueError(f"Activation {act} is not supported!!")
+
+    def forward(self, x):
+        return self.act(self.bn(self.conv(x)))
+
+
+class ArcMarginProduct(nn.Module):
+    def __init__(self, in_features, out_features, s=30.0, m=0.50, easy_margin=False):
+        super(ArcMarginProduct, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.s = s
+        self.m = m
+        self.easy_margin = easy_margin
+
+        self.cos_m = math.cos(m)
+        self.sin_m = math.sin(m)
+        self.th = math.cos(math.pi - m)
+        self.mm = math.sin(math.pi - m) * m
+
+        self.weight = Parameter(torch.FloatTensor(out_features, in_features))
+        nn.init.normal_(self.weight, std=0.01)
+
+    def forward(self, input, label):
+        cosine = F.linear(F.normalize(input), F.normalize(self.weight))
+        sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
+        phi = cosine * self.cos_m - sine * self.sin_m
+
+        if self.easy_margin:
+            phi = torch.where(cosine > 0, phi, cosine)
+        else:
+            phi = torch.where(cosine > self.th, phi, cosine - self.mm)
+
+        one_hot = torch.zeros(cosine.size(), device=input.device)
+        one_hot.scatter_(1, label.view(-1, 1).long(), 1)
+        output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
+        output *= self.s
+        return output
