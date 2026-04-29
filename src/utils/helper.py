@@ -196,6 +196,9 @@ def visualize_bbox_from_txt(txt_file, image_dir, output_dir, limit=10):
         count += 1
 
 
+
+
+
 if __name__ == "__main__":
     visualize_bbox_from_txt(
         r"E:\OU\Learning\AI\btl\FaID-System\data\detection\raw\list_bbox_celeba.txt",

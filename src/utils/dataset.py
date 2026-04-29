@@ -75,27 +75,22 @@ class CelebALandmarkDataset(Dataset):
 
 
 class RecognitionDataset(Dataset):
-    def __init__(self, data_folder: str, images: list, labels: list, transform=None):
-        if not os.path.exists(data_folder):
-            raise ValueError("path not exist!!")
-
-        self.data_folder = data_folder
-        self.images = images
-        self.labels = labels
+    def __init__(self, data_list: list, transform=None):
+        self.data = data_list
         self.transform = transform
 
     def __len__(self):
-        return len(self.images)
+        return len(self.data)
 
     def __getitem__(self, idx):
-        filename = self.images[idx]
-        class_name: str = filename.split("_")[0]
+        img_path, label = self.data[idx]
 
-        image = Image.open(os.path.join(self.data_folder, filename)).convert("RGB")
+        try:
+            image = Image.open(img_path).convert("RGB")
+        except Exception as e:
+            raise e
 
         if self.transform:
             image = self.transform(image)
 
-        return image, torch.tensor(
-            self.labels.index(class_name.lower()), dtype=torch.long
-        )
+        return image, torch.tensor(label, dtype=torch.long)

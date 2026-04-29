@@ -1,0 +1,14 @@
+.vscode/
+checkpoints/recognition_3/
+checkpoints/recognition_4/
+
+venv/
+.venv/
+.env/
+env/
+
+data/105_classes_pins_dataset/
+data/105_classes_pins_dataset.zip
+
+**/__pycache__/
+*.py[cod]
