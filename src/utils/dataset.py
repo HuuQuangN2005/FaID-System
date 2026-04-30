@@ -60,10 +60,10 @@ class CelebALandmarkDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-
         img_name, points = self.samples[idx]
         img_path = os.path.join(self.img_dir, img_name)
         image = Image.open(img_path).convert("RGB")
+
         image = self.transform(image)
 
         landmarks = torch.tensor(points).float().view(5, 2)
