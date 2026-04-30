@@ -156,59 +156,54 @@ class RecognitionModel(nn.Module):
 
 
 class MyRecognitionModel(nn.Module):
-    def __init__(self, num_classes: int = 100, configs: list = None):
-        super().__init__()
+    def __init__(self, num_classes: int = 105):
+        super(MyRecognitionModel, self).__init__()
 
-        if configs is None:
-            configs = [
-                (3, 16, 3, 1, 1),
-                (16, 32, 3, 1, 1),
-                (32, 64, 3, 1, 1),
-                (64, 128, 3, 1, 1),
-                (128, 256, 3, 1, 1)
-            ]
-        elif not isinstance(configs, list):
-            raise ValueError("configs error!!")
+        self.block1 = nn.Sequential(
+            ConvBlock(3, 32, padding=1),
+            ConvBlock(32, 32, padding=1),
+            nn.MaxPool2d(2),
+            nn.Dropout2d(0.1),
+        )  
 
-        layers = []
-        for i, (in_c, out_c, kernel, stride, padding) in enumerate(configs):
-            layers.append(
-                ConvBlock(
-                    in_c=in_c,
-                    out_c=out_c,
-                    kernel=kernel,
-                    stride=stride,
-                    padding=padding,
-                )
-            )
-            layers.append(
-                ConvBlock(
-                    in_c=out_c,
-                    out_c=out_c,
-                    kernel=kernel,
-                    stride=stride,
-                    padding=padding,
-                )
-            )
-            layers.append(nn.MaxPool2d(2))
+        self.block2 = nn.Sequential(
+            ConvBlock(32, 64, padding=1),
+            ConvBlock(64, 64, padding=1),
+            nn.MaxPool2d(2),
+            nn.Dropout2d(0.1),
+        )  
 
-        self.backbone = nn.Sequential(*layers)
+        self.block3 = nn.Sequential(
+            ConvBlock(64, 128, padding=1),
+            ConvBlock(128, 128, padding=1),
+            nn.MaxPool2d(2),
+            nn.Dropout2d(0.1),
+        ) 
+
+        self.block4 = nn.Sequential(
+            ConvBlock(128, 256, padding=1),
+            ConvBlock(256, 256, padding=1),
+            nn.MaxPool2d(2),
+            nn.Dropout2d(0.1),
+        ) 
 
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.flatten = nn.Flatten()
-
         self.fc = nn.Sequential(
-            nn.Linear(configs[-1][1], 512),
+            nn.Flatten(),
+            nn.Linear(256, 512),
             nn.BatchNorm1d(512),
-            nn.LeakyReLU(),
-            nn.Dropout(0.5),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Dropout(0.5),  
             nn.Linear(512, num_classes),
         )
 
     def forward(self, x):
-        x = self.backbone(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.block4(x)
+
         x = self.global_pool(x)
-        x = self.flatten(x)
         x = self.fc(x)
         return x
