@@ -17,6 +17,9 @@ checkpoints/alignment/best_landmark_model.pth
 checkpoints/alignment/best_model.pth
 checkpoints/alignment/landmark_epoch_1.pth
 checkpoints/alignment/best_pupil_model.pth
+checkpoints/alignment/best_landmark_model_tmp.pth
+
+checkpoints/detection/face_detector_epoch_9.pth
 
 
 data/105_classes_pins_dataset/
