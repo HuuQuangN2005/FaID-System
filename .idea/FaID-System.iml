@@ -3,6 +3,8 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/notebooks/dataset_landmark_refined" />
+      <excludeFolder url="file://$MODULE_DIR$/notebooks/raw" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.11 (FaID-System)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
