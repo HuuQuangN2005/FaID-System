@@ -116,6 +116,19 @@ class DetectionModel(nn.Module):
         return torch.cat([boxes, conf], dim=-1)
 
 
+<<<<<<< HEAD
+
+class LandmarkModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        backbone = models.resnet18(weights=None)
+        self.features = nn.Sequential(*list(backbone.children())[:-1])
+
+        self.fc = nn.Linear(512, 10)
+
+    def forward(self, x):
+        x = self.features(x).view(x.size(0), -1)
+=======
 class LandmarkModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -129,11 +142,15 @@ class LandmarkModel(nn.Module):
 
         x = self.features(x)
         x = x.view(x.size(0), -1)
+>>>>>>> 960847afbcae8ac96db4fd6043f5a1bbaa497a82
         x = self.fc(x)
 
         return x.view(-1, 5, 2)
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 960847afbcae8ac96db4fd6043f5a1bbaa497a82
 class RecognitionModel(nn.Module):
     def __init__(self, num_classes: int = 100):
         super().__init__()
