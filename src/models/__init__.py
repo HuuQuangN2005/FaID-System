@@ -116,19 +116,6 @@ class DetectionModel(nn.Module):
         return torch.cat([boxes, conf], dim=-1)
 
 
-<<<<<<< HEAD
-
-class LandmarkModel(nn.Module):
-    def __init__(self):
-        super().__init__()
-        backbone = models.resnet18(weights=None)
-        self.features = nn.Sequential(*list(backbone.children())[:-1])
-
-        self.fc = nn.Linear(512, 10)
-
-    def forward(self, x):
-        x = self.features(x).view(x.size(0), -1)
-=======
 class LandmarkModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -142,15 +129,11 @@ class LandmarkModel(nn.Module):
 
         x = self.features(x)
         x = x.view(x.size(0), -1)
->>>>>>> 960847afbcae8ac96db4fd6043f5a1bbaa497a82
         x = self.fc(x)
 
         return x.view(-1, 5, 2)
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 960847afbcae8ac96db4fd6043f5a1bbaa497a82
 class RecognitionModel(nn.Module):
     def __init__(self, num_classes: int = 100):
         super().__init__()
@@ -184,28 +167,28 @@ class MyRecognitionModel(nn.Module):
             ConvBlock(32, 32, padding=1),
             nn.MaxPool2d(2),
             nn.Dropout2d(0.1),
-        )  
+        )
 
         self.block2 = nn.Sequential(
             ConvBlock(32, 64, padding=1),
             ConvBlock(64, 64, padding=1),
             nn.MaxPool2d(2),
             nn.Dropout2d(0.1),
-        )  
+        )
 
         self.block3 = nn.Sequential(
             ConvBlock(64, 128, padding=1),
             ConvBlock(128, 128, padding=1),
             nn.MaxPool2d(2),
             nn.Dropout2d(0.1),
-        ) 
+        )
 
         self.block4 = nn.Sequential(
             ConvBlock(128, 256, padding=1),
             ConvBlock(256, 256, padding=1),
             nn.MaxPool2d(2),
             nn.Dropout2d(0.1),
-        ) 
+        )
 
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
 
@@ -214,8 +197,11 @@ class MyRecognitionModel(nn.Module):
             nn.Linear(256, 512),
             nn.BatchNorm1d(512),
             nn.LeakyReLU(0.1, inplace=True),
-            nn.Dropout(0.5),  
-            nn.Linear(512, num_classes),
+            nn.Dropout(0.5),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Linear(256, num_classes),
         )
 
     def forward(self, x):

@@ -26,3 +26,8 @@ data/105_classes_pins_dataset.zip
 
 **/__pycache__/
 *.py[cod]
+
+**.pth
+
+data/test
+data/test.zip
